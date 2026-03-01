@@ -1,101 +1,45 @@
-//
-//  DisparityMapCalculator.hpp
-//  QuadrocopterBrain
-//
-//  Created by anton on 08.11.15.
-//  Copyright � 2015 anton. All rights reserved.
-//
-
-#ifndef DisparityMapCalculator_hpp
-#define DisparityMapCalculator_hpp
+#ifndef DISPARITY_CALCULATOR_HPP
+#define DISPARITY_CALCULATOR_HPP
 
 #include <opencv2/opencv.hpp>
+#include <opencv2/calib3d.hpp>
 
-class DisparityMapCalculator {
-public:
-
-	DisparityMapCalculator();
-	void set(
-		cv::Mat camera1Matrix,
-		cv::Mat camera2Matrix,
-		cv::Mat camera1distCoeff,
-		cv::Mat camera2distCoeff,
-		cv::Mat rotationMatrix,
-		cv::Mat translationVector,
-		cv::Size imageSize
-	);
-	void compute(
-		const cv::Mat& image1,
-		const cv::Mat& image2,
-		cv::Mat& image1recified,
-		cv::Mat& image2recified,
-		cv::Mat& disparityMap
-	);
-
-	void setBMParameters(
-		int preFilterSize,
-		int preFilterCap,
-		int blockSize,
-		int minDisparity,
-		int numDisparities,
-		int textureThreshold,
-		int uniquenessRatio,
-		int speckleWindowSize,
-		int speckleRange,
-		int disp12maxDiff
-	);
-
-	void setSGBMParameters(
-		int preFilterCap,
-		int blockSize,
-		int minDisparity,
-		int numDisparities,
-		int uniquenessRatio,
-		int speckleWindowSize,
-		int speckleRange,
-		int disp12maxDiff,
-		int p1,
-		int p2
-	);
-
+/**
+ * Класс для вычисления карты глубины в реальном времени
+ */
+class DisparityCalculator {
 private:
-
-	cv::Ptr<cv::StereoBM> bm;
-	cv::Ptr<cv::StereoSGBM> sgbm;
-	cv::Mat camera1Matrix;
-	cv::Mat camera2Matrix;
-	cv::Mat camera1distCoeff;
-	cv::Mat camera2distCoeff;
-	cv::Mat rotationMatrix;
-	cv::Mat translationVector;
-	cv::Size imageSize;
-	cv::Mat map11;
-	cv::Mat map12;
-	cv::Mat map21;
-	cv::Mat map22;
-	cv::Rect roi1, roi2;
-	cv::Mat Q;
-	cv::Mat R1;
-	cv::Mat P1;
-	cv::Mat R2;
-	cv::Mat P2;
-
-	cv::Mat disp, disp8bit;
-	cv::Mat image1gray, image2gray;
-	cv::Mat L, R;
-
-
-	//	int preFilterSize;
-	//    int preFilterCap;
-	//    int blockSize;
-	//    int minDisparity;
-	//    int numDisparities;
-	//    int textureThreshold;
-	//    int uniquenessRatio;
-	//    int speckleWindowSize;
-	//    int speckleRange;
-
-
+    // Карты для ректификации (предвычисленные)
+    cv::Mat mapLeft1, mapLeft2;    // Для левой камеры
+    cv::Mat mapRight1, mapRight2;  // Для правой камеры
+    cv::Mat Q;                      // Матрица для глубины
+    bool mapsReady;                  // Готовы ли карты
+    
+    // Алгоритм SGBM для вычисления disparity
+    cv::Ptr<cv::StereoSGBM> sgbm;
+    
+public:
+    DisparityCalculator();
+    
+    // Инициализация с параметрами калибровки
+    bool initialize(const cv::Mat& cameraMatrix1, const cv::Mat& distCoeffs1,
+                   const cv::Mat& cameraMatrix2, const cv::Mat& distCoeffs2,
+                   const cv::Mat& R1, const cv::Mat& R2,
+                   const cv::Mat& P1, const cv::Mat& P2,
+                   const cv::Mat& Q, const cv::Size& imageSize);
+    
+    // Ректификация изображений (исправление искажений и выравнивание)
+    void rectifyImages(const cv::Mat& left, const cv::Mat& right,
+                       cv::Mat& leftRect, cv::Mat& rightRect);
+    
+    // Вычисление карты disparity
+    cv::Mat computeDisparity(const cv::Mat& left, const cv::Mat& right);
+    
+    // Визуализация (близко = белый, далеко = черный)
+    cv::Mat visualizeDepth(const cv::Mat& disparity);
+    
+    // Настройка параметров алгоритма
+    void setParameters(int numDisparities, int blockSize, int uniquenessRatio);
 };
 
-#endif /* DisparityMapCalculator_hpp */
+#endif
